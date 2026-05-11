@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="th" data-lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="GoParkPing — สแกน QR แจ้งเจ้าของรถ ไม่ต้องทิ้งเบอร์ | Scan QR to reach a blocked car owner instantly via LINE.">
+<title>GoParkPing — แจ้งเจ้าของรถ ไม่ต้องทิ้งเบอร์</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&family=Jost:wght@300;400;500&family=DM+Mono:wght@300;400&family=Noto+Sans+Thai:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #091C1C;
+  --bg2:       #0C2222;
+  --surface:   #0F2828;
+  --surface2:  #122E2E;
+  --surface3:  #163333;
+  --gold:      #BFA26A;
+  --gold-lt:   #D4BC90;
+  --gold-dim:  rgba(191,162,106,0.1);
+  --gold-mid:  rgba(191,162,106,0.2);
+  --cream:     #EDE8DC;
+  --cream2:    #C8BFA8;
+  --cream3:    #8A8270;
+  --border:    rgba(191,162,106,0.14);
+  --border2:   rgba(191,162,106,0.24);
+  --green-line:#06C755;
+  --playfair:  'Playfair Display', Georgia, serif;
+  --jost:      'Jost', sans-serif;
+  --mono:      'DM Mono', monospace;
+  --thai:      'Noto Sans Thai', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--cream);
+  font-family: var(--thai);
+  font-weight: 300;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.7;
+}
+
+/* Subtle noise grain */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px;
+  pointer-events: none; z-index: 999;
+}
+
+/* Soft ambient glow */
+.glow-a {
+  position: fixed; top: -250px; left: -100px;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(191,162,106,0.04) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+.glow-b {
+  position: fixed; bottom: -200px; right: -200px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(15,80,80,0.35) 0%, transparent 65%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── LANG TOGGLE ── */
+.lang-toggle {
+  position: fixed; top: 18px; right: 22px; z-index: 300;
+  display: flex;
+  background: rgba(9,28,28,0.9);
+  border: 1px solid var(--border2);
+  border-radius: 30px; padding: 3px; gap: 2px;
+  backdrop-filter: blur(18px);
+}
+.lang-btn {
+  font-family: var(--mono); font-size: 10px; font-weight: 300;
+  padding: 5px 14px; border-radius: 20px; border: none;
+  background: transparent; color: var(--cream3);
+  cursor: pointer; transition: all .25s; letter-spacing: .08em;
+}
+.lang-btn.active { background: var(--gold); color: var(--bg); font-weight: 400; }
+
+/* ── SHOW / HIDE ── */
+.en-only, .en-inline { display: none; }
+.th-only, .th-inline { display: block; }
+[data-lang="th"] .th-only   { display: block !important; }
+[data-lang="th"] .th-inline { display: inline !important; }
+[data-lang="th"] .en-only   { display: none !important; }
+[data-lang="th"] .en-inline { display: none !important; }
+[data-lang="en"] .en-only   { display: block !important; }
+[data-lang="en"] .en-inline { display: inline !important; }
+[data-lang="en"] .th-only   { display: none !important; }
+[data-lang="en"] .th-inline { display: none !important; }
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  border-bottom: 1px solid var(--border);
+  background: rgba(9,28,28,0.95);
+  backdrop-filter: blur(20px);
+}
+.nav-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 62px; max-width: 1080px; margin: 0 auto; padding: 0 36px;
+  position: relative; z-index: 1;
+}
+.logo { display: flex; align-items: center; gap: 13px; text-decoration: none; }
+.logo-mark {
+  width: 34px; height: 34px;
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--playfair); font-size: 18px; font-weight: 400;
+  color: var(--gold); background: var(--gold-dim);
+  flex-shrink: 0; letter-spacing: 0;
+}
+.logo-wordmark {
+  display: flex; flex-direction: column; gap: 0;
+}
+.logo-name {
+  font-family: var(--jost); font-size: 14px; font-weight: 400;
+  color: var(--cream); letter-spacing: .12em; text-transform: uppercase;
+  line-height: 1;
+}
+.logo-name span { color: var(--gold); }
+.logo-sub {
+  font-family: var(--mono); font-size: 9px; font-weight: 300;
+  color: var(--cream3); letter-spacing: .14em; text-transform: uppercase;
+  margin-top: 2px;
+}
+.nav-badge {
+  font-family: var(--mono); font-size: 9px; font-weight: 300;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px; color: var(--cream3);
+  letter-spacing: .12em; text-transform: uppercase;
+}
+
+/* ── WRAP ── */
+.wrap { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 0 36px; }
+
+/* ── HERO ── */
+.hero {
+  padding: 100px 0 90px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+/* thin gold vertical line far left */
+.hero::before {
+  content: '';
+  position: absolute; left: 0; top: 80px; bottom: 80px;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+  opacity: .25;
+}
+
+.hero-label {
+  display: flex; align-items: center; gap: 16px;
+  font-family: var(--mono); font-size: 10px; font-weight: 300;
+  color: var(--gold); letter-spacing: .2em; text-transform: uppercase;
+  margin-bottom: 36px;
+}
+.hero-label::before { content:''; width:24px; height:1px; background:var(--gold); opacity:.5; }
+
+/* Thai headline — elegant, light weight */
+.hero-h1-th {
+  font-family: var(--thai);
+  font-size: clamp(34px, 5.5vw, 62px);
+  font-weight: 300;
+  line-height: 1.25;
+  letter-spacing: .01em;
+  color: var(--cream);
+  margin-bottom: 0;
+}
+.hero-h1-th em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--gold-lt);
+}
+
+/* English headline — Playfair, not bold, with italic charm */
+.hero-h1-en {
+  font-family: var(--playfair);
+  font-size: clamp(38px, 6vw, 70px);
+  font-weight: 400;
+  line-height: 1.18;
+  letter-spacing: -.01em;
+  color: var(--cream);
+  margin-bottom: 0;
+}
+.hero-h1-en em {
+  font-style: italic;
+  color: var(--gold-lt);
+}
+
+/* thin gold rule below headline */
+.hero-rule {
+  display: flex; align-items: center; gap: 14px;
+  margin: 28px 0 30px;
+}
+.hero-rule-line {
+  width: 48px; height: 1px;
+  background: linear-gradient(to right, var(--gold), transparent);
+}
+.hero-rule-dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--gold); opacity: .6;
+}
+
+.hero-sub {
+  font-size: clamp(13px, 1.6vw, 15px);
+  color: var(--cream2); line-height: 1.9;
+  max-width: 500px; margin-bottom: 42px;
+  font-weight: 300;
+  letter-spacing: .01em;
+}
+
+.hero-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 13px 30px;
+  background: var(--gold);
+  color: var(--bg);
+  font-family: var(--jost); font-size: 13px; font-weight: 500;
+  border: none; border-radius: 2px;
+  cursor: pointer; text-decoration: none;
+  letter-spacing: .1em; text-transform: uppercase;
+  transition: all .25s;
+}
+.btn-primary:hover { background: var(--gold-lt); transform: translateY(-1px); box-shadow: 0 8px 28px rgba(191,162,106,0.2); }
+
+.btn-outline {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 12px 26px;
+  background: transparent; color: var(--cream2);
+  font-family: var(--jost); font-size: 13px; font-weight: 400;
+  border: 1px solid var(--border2); border-radius: 2px;
+  cursor: pointer; text-decoration: none;
+  letter-spacing: .08em; text-transform: uppercase;
+  transition: all .25s;
+}
+.btn-outline:hover { border-color: var(--gold); color: var(--gold-lt); background: var(--gold-dim); }
+
+.line-pill {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 12px 20px;
+  background: rgba(6,199,85,0.06);
+  border: 1px solid rgba(6,199,85,0.22);
+  border-radius: 2px;
+  font-size: 13px; color: #5ECB82;
+  font-family: var(--jost); font-weight: 400;
+  letter-spacing: .06em; text-transform: uppercase;
+  text-decoration: none; transition: background .2s;
+}
+.line-pill:hover { background: rgba(6,199,85,0.11); }
+.line-pill::before { content:''; width:7px; height:7px; border-radius:50%; background:#06C755; flex-shrink:0; }
+
+/* hero metrics */
+.hero-metrics {
+  display: flex; gap: 0;
+  margin-top: 64px;
+  border-top: 1px solid var(--border);
+  padding-top: 36px;
+}
+.hm-item {
+  flex: 1; padding-right: 32px;
+  border-right: 1px solid var(--border);
+  margin-right: 32px;
+}
+.hm-item:last-child { border-right: none; margin-right: 0; }
+.hm-val {
+  font-family: var(--playfair); font-size: 32px; font-weight: 400;
+  color: var(--cream); line-height: 1;
+}
+.hm-val span { color: var(--gold); }
+.hm-label {
+  font-family: var(--jost); font-size: 11px; font-weight: 300;
+  color: var(--cream3); margin-top: 7px;
+  letter-spacing: .1em; text-transform: uppercase;
+}
+
+/* ── SECTION BASE ── */
+.section { padding: 88px 0; border-bottom: 1px solid var(--border); }
+
+.sec-tag {
+  font-family: var(--mono); font-size: 10px; font-weight: 300;
+  color: var(--gold); letter-spacing: .2em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 10px;
+}
+.sec-tag::before { content:''; width:20px; height:1px; background:var(--gold); opacity:.5; }
+
+.sec-heading-th {
+  font-family: var(--thai); font-size: clamp(22px, 3vw, 32px);
+  font-weight: 300; color: var(--cream);
+  letter-spacing: .01em; margin-bottom: 48px;
+  line-height: 1.4;
+}
+.sec-heading-en {
+  font-family: var(--playfair); font-size: clamp(24px, 3.2vw, 36px);
+  font-weight: 400; color: var(--cream);
+  letter-spacing: -.01em; margin-bottom: 48px;
+  line-height: 1.35; font-style: italic;
+}
+
+/* ── HOW IT WORKS ── */
+.steps-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border);
+}
+.step-card {
+  background: var(--surface); padding: 36px 28px;
+  transition: background .25s; position: relative;
+}
+.step-card:hover { background: var(--surface2); }
+.step-num {
+  font-family: var(--mono); font-size: 10px; font-weight: 300;
+  color: var(--gold); letter-spacing: .18em;
+  margin-bottom: 24px; opacity: .7;
+}
+.step-icon { font-size: 20px; margin-bottom: 18px; display: block; opacity: .9; }
+.step-title {
+  font-size: 14px; font-weight: 400; color: var(--cream);
+  margin-bottom: 10px; line-height: 1.45; letter-spacing: .01em;
+}
+.step-desc {
+  font-size: 12px; color: var(--cream3); line-height: 1.8;
+  font-weight: 300; letter-spacing: .01em;
+}
+
+/* gold top border on hover */
+.step-card::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(to right, var(--gold), transparent);
+  opacity: 0; transition: opacity .25s;
+}
+.step-card:hover::after { opacity: 1; }
+
+/* ── FEATURES ── */
+.features-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+.feat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 28px 26px; transition: all .25s;
+  position: relative;
+}
+.feat-card:hover { background: var(--surface2); border-color: var(--border2); }
+.feat-icon {
+  font-size: 20px; margin-bottom: 16px; display: block;
+  opacity: .85;
+}
+.feat-title {
+  font-size: 13px; font-weight: 400; color: var(--cream);
+  margin-bottom: 8px; letter-spacing: .04em; text-transform: uppercase;
+}
+.feat-desc {
+  font-size: 12px; color: var(--cream3); line-height: 1.8;
+  font-weight: 300; letter-spacing: .01em;
+}
+/* small gold accent left border on hover */
+.feat-card::before {
+  content: '';
+  position: absolute; left: 0; top: 20%; bottom: 20%;
+  width: 1px; background: var(--gold);
+  opacity: 0; transition: opacity .25s;
+}
+.feat-card:hover::before { opacity: .5; }
+
+/* ── CTA / ETAG ── */
+.cta-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  padding: 60px 52px;
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 48px; align-items: center;
+  position: relative; overflow: hidden;
+}
+/* faint watermark */
+.cta-wrap::after {
+  content: 'GP';
+  position: absolute; right: -16px; bottom: -24px;
+  font-family: var(--playfair);
+  font-size: 200px; font-weight: 400; font-style: italic;
+  color: var(--gold); opacity: .04;
+  pointer-events: none; line-height: 1;
+}
+/* left gold bar */
+.cta-wrap::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+  opacity: .4;
+}
+
+.cta-eyebrow {
+  font-family: var(--mono); font-size: 10px; font-weight: 300;
+  color: var(--gold); letter-spacing: .2em; text-transform: uppercase;
+  margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+}
+.cta-eyebrow::before { content:''; width:14px; height:1px; background:var(--gold); opacity:.5; }
+
+.cta-h2-th {
+  font-family: var(--thai); font-size: clamp(22px, 2.8vw, 30px);
+  font-weight: 300; color: var(--cream);
+  margin-bottom: 10px; line-height: 1.4; letter-spacing: .01em;
+}
+.cta-h2-en {
+  font-family: var(--playfair); font-size: clamp(24px, 3vw, 34px);
+  font-weight: 400; font-style: italic;
+  color: var(--cream); margin-bottom: 10px; line-height: 1.3;
+}
+.cta-sub {
+  font-size: 13px; color: var(--cream2); line-height: 1.85;
+  margin-bottom: 26px; font-weight: 300; max-width: 440px;
+  letter-spacing: .01em;
+}
+.cta-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.cta-input {
+  flex: 1; min-width: 200px; padding: 12px 18px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  color: var(--cream);
+  font-family: var(--jost); font-size: 13px; font-weight: 300;
+  outline: none; transition: border-color .2s; letter-spacing: .02em;
+}
+.cta-input::placeholder { color: var(--cream3); }
+.cta-input:focus { border-color: var(--gold); }
+
+.or-div {
+  display: flex; align-items: center; gap: 16px;
+  margin: 18px 0; font-size: 10px; color: var(--cream3);
+  font-family: var(--mono); font-weight: 300; letter-spacing: .15em; text-transform: uppercase;
+}
+.or-div::before, .or-div::after { content:''; flex:1; height:1px; background:var(--border); }
+
+.cta-line-pill {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 12px 20px;
+  background: rgba(6,199,85,0.06);
+  border: 1px solid rgba(6,199,85,0.2);
+  font-size: 13px; color: #5ECB82;
+  font-family: var(--jost); font-weight: 400;
+  letter-spacing: .08em; text-transform: uppercase;
+  text-decoration: none; transition: background .2s;
+}
+.cta-line-pill:hover { background: rgba(6,199,85,0.11); }
+.cta-line-pill::before { content:''; width:7px; height:7px; border-radius:50%; background:#06C755; flex-shrink:0; }
+
+.cta-qr {
+  width: 128px; height: 128px;
+  background: var(--cream);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; padding: 10px;
+  box-shadow: 0 0 0 1px var(--border2), 0 0 0 6px var(--gold-dim);
+}
+.cta-qr svg { width:100%; height:100%; }
+
+/* ── FOOTER ── */
+footer {
+  padding: 40px 0;
+  border-top: 1px solid var(--border);
+  position: relative; z-index: 1;
+}
+.footer-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 18px;
+}
+.footer-copy {
+  font-family: var(--mono); font-size: 10px; font-weight: 300;
+  color: var(--cream3); letter-spacing: .08em;
+}
+.footer-links { display: flex; gap: 28px; }
+.footer-links a {
+  font-family: var(--jost); font-size: 11px; font-weight: 400;
+  color: var(--cream3); text-decoration: none;
+  letter-spacing: .1em; text-transform: uppercase;
+  transition: color .2s;
+}
+.footer-links a:hover { color: var(--gold); }
+
+/* ── REVEAL ── */
+.reveal {
+  opacity: 0; transform: translateY(18px);
+  transition: opacity .7s ease, transform .7s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal:nth-child(2){ transition-delay:.1s; }
+.reveal:nth-child(3){ transition-delay:.2s; }
+.reveal:nth-child(4){ transition-delay:.3s; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:720px){
+  .hero { padding: 68px 0 56px; }
+  .hero::before { display: none; }
+  .hero-metrics { flex-direction: column; gap: 24px; }
+  .hm-item { border-right: none; margin-right: 0; padding-right: 0; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+  .hm-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .cta-wrap { grid-template-columns: 1fr; padding: 36px 28px; }
+  .cta-qr { display: none; }
+  .lang-toggle { top: 12px; right: 14px; }
+  .wrap { padding: 0 22px; }
+}
+</style>
+</head>
+<body>
+<div class="glow-a"></div>
+<div class="glow-b"></div>
+
+<!-- LANG TOGGLE -->
+<div class="lang-toggle">
+  <button class="lang-btn active" id="btn-th" onclick="setLang('th')">ภาษาไทย</button>
+  <button class="lang-btn" id="btn-en" onclick="setLang('en')">English</button>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="logo">
+      <div class="logo-mark">G</div>
+      <div class="logo-wordmark">
+        <span class="logo-name">Go<span>Park</span>Ping</span>
+        <span class="logo-sub">Bangkok · Thailand</span>
+      </div>
+    </a>
+    <span class="nav-badge th-inline">เบต้า</span>
+    <span class="nav-badge en-inline">Beta</span>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-label th-inline">เปิดตัวที่กรุงเทพฯ · 2026</div>
+    <div class="hero-label en-inline">Launching in Bangkok · 2026</div>
+
+    <h1 class="hero-h1-th th-only reveal">
+      รถจอดขวาง?<br>
+      สแกน. แจ้ง. <em>ไปได้เลย.</em>
+    </h1>
+    <h1 class="hero-h1-en en-only reveal">
+      Someone blocked<br>your car in?<br>
+      Scan. Ping. <em>Move on.</em>
+    </h1>
+
+    <div class="hero-rule">
+      <div class="hero-rule-line"></div>
+      <div class="hero-rule-dot"></div>
+    </div>
+
+    <p class="hero-sub th-only reveal">
+      สแกน QR tag บนรถที่จอดขวาง แล้วเจ้าของรถจะได้รับแจ้งผ่าน LINE ทันที
+      โดยที่ทั้งสองฝ่ายไม่เปิดเผยเบอร์โทรกัน และไม่ต้องโหลดแอปใดเลย
+    </p>
+    <p class="hero-sub en-only reveal">
+      Scan the QR tag on any blocking car — the owner receives a LINE notification instantly.
+      No phone numbers shared on either side. No app required to scan.
+    </p>
+
+    <div class="hero-actions reveal">
+      <a href="#etag" class="btn-primary th-only">
+        รับ eTag ฟรี
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M3 6l4 4 4-4M1 11h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <a href="#etag" class="btn-primary en-only">
+        Get Free eTag
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M3 6l4 4 4-4M1 11h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <a href="https://line.me/R/ti/p/@171zfzov" class="line-pill" target="_blank" rel="noopener">
+        <span class="th-inline">เพิ่ม LINE OA</span>
+        <span class="en-inline">Add on LINE</span>
+      </a>
+    </div>
+
+    <div class="hero-metrics">
+      <div class="hm-item reveal">
+        <div class="hm-val">10<span>.67M</span></div>
+        <div class="hm-label th-only">รถในกรุงเทพฯ</div>
+        <div class="hm-label en-only">Vehicles in Bangkok</div>
+      </div>
+      <div class="hm-item reveal">
+        <div class="hm-val"><span>฿0</span></div>
+        <div class="hm-label th-only">ดาวน์โหลด eTag ฟรี</div>
+        <div class="hm-label en-only">eTag download cost</div>
+      </div>
+      <div class="hm-item reveal">
+        <div class="hm-val">&lt;<span>60</span>s</div>
+        <div class="hm-label th-only">เวลาแจ้งเจ้าของรถ</div>
+        <div class="hm-label en-only">Time to notify owner</div>
+      </div>
+      <div class="hm-item reveal">
+        <div class="hm-val">54<span>M</span></div>
+        <div class="hm-label th-only">คนไทยใช้ LINE</div>
+        <div class="hm-label en-only">LINE users in Thailand</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section">
+  <div class="wrap">
+    <div class="sec-tag th-only">วิธีใช้งาน</div>
+    <div class="sec-tag en-only">How it works</div>
+    <div class="sec-heading-th th-only">สี่ขั้นตอน ง่ายมาก</div>
+    <div class="sec-heading-en en-only">Four steps, beautifully simple</div>
+    <div class="steps-grid">
+      <div class="step-card reveal">
+        <div class="step-num">01 &mdash; Tag</div>
+        <span class="step-icon">🏷</span>
+        <div class="step-title th-only">ติด QR tag บนรถ</div>
+        <div class="step-title en-only">Place the QR tag on your car</div>
+        <div class="step-desc th-only">ดาวน์โหลด eTag ฟรี พิมพ์ ใส่ซองพลาสติก ติดบนแผงหน้าปัด หรือสั่งซื้อสติ๊กเกอร์กันน้ำ ฿199</div>
+        <div class="step-desc en-only">Download the free eTag PDF, print it, slip into a plastic sleeve and place on your dashboard. Or order the ฿199 waterproof sticker.</div>
+      </div>
+      <div class="step-card reveal">
+        <div class="step-num">02 &mdash; Scan</div>
+        <span class="step-icon">📱</span>
+        <div class="step-title th-only">สแกน QR ด้วยมือถือ</div>
+        <div class="step-title en-only">Scan with any phone</div>
+        <div class="step-desc th-only">ใช้กล้องมือถือสแกน ไม่ต้องโหลดแอป ใช้ได้ทุกเครื่องทุกระบบปฏิบัติการ</div>
+        <div class="step-desc en-only">Point any phone camera at the tag — no app needed, works across every device and operating system.</div>
+      </div>
+      <div class="step-card reveal">
+        <div class="step-num">03 &mdash; Notify</div>
+        <span class="step-icon">🔔</span>
+        <div class="step-title th-only">เจ้าของรถได้รับแจ้งผ่าน LINE</div>
+        <div class="step-title en-only">Owner receives a LINE alert</div>
+        <div class="step-desc th-only">ระบบส่ง notification ผ่าน LINE ทันที พร้อม masked call โดยไม่เปิดเผยเบอร์ทั้งสองฝ่าย</div>
+        <div class="step-desc en-only">An instant LINE notification reaches the owner — with masked calling so neither party's number is ever revealed.</div>
+      </div>
+      <div class="step-card reveal">
+        <div class="step-num">04 &mdash; Resolve</div>
+        <span class="step-icon">✅</span>
+        <div class="step-title th-only">ย้ายรถ อย่างสงบ</div>
+        <div class="step-title en-only">Car moves, peacefully</div>
+        <div class="step-desc th-only">เจ้าของรถกด "กำลังมา" คนที่รอเห็น status อัปเดต ทั้งสองฝ่ายไม่ต้องพบหน้ากัน</div>
+        <div class="step-desc en-only">Owner taps "On my way" — the waiting person sees the live update. No confrontation, no argument, no stress.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section" style="background:var(--bg2)">
+  <div class="wrap">
+    <div class="sec-tag th-only">จุดเด่น</div>
+    <div class="sec-tag en-only">What makes it different</div>
+    <div class="sec-heading-th th-only">ทำไมต้อง GoParkPing</div>
+    <div class="sec-heading-en en-only">Why GoParkPing</div>
+    <div class="features-grid">
+      <div class="feat-card reveal">
+        <span class="feat-icon">🔒</span>
+        <div class="feat-title th-only">ไม่เปิดเผยเบอร์</div>
+        <div class="feat-title en-only">Complete privacy</div>
+        <div class="feat-desc th-only">Masked calling — ทั้งคนสแกนและเจ้าของรถไม่รู้เบอร์กันเลย ปลอดภัย 100%</div>
+        <div class="feat-desc en-only">Masked calling throughout — neither the scanner nor the owner ever sees the other's phone number.</div>
+      </div>
+      <div class="feat-card reveal">
+        <span class="feat-icon">⚡</span>
+        <div class="feat-title th-only">ไม่ต้องโหลดแอป</div>
+        <div class="feat-title en-only">No app required</div>
+        <div class="feat-desc th-only">คนที่เห็นรถขวางเพียงแค่สแกน QR ด้วยกล้องมือถือ ไม่ต้องลงทะเบียน ไม่ต้องโหลดอะไรเพิ่ม</div>
+        <div class="feat-desc en-only">The person who scans simply uses their phone camera. No registration, no download, no friction whatsoever.</div>
+      </div>
+      <div class="feat-card reveal">
+        <span class="feat-icon">💚</span>
+        <div class="feat-title th-only">ส่งผ่าน LINE</div>
+        <div class="feat-title en-only">Delivered via LINE</div>
+        <div class="feat-desc th-only">แจ้งเตือนผ่าน LINE OA — แอปที่คนไทย 54 ล้านคนใช้งานทุกวัน</div>
+        <div class="feat-desc en-only">Notifications arrive via LINE OA — the application 54 million Thais open every single day.</div>
+      </div>
+      <div class="feat-card reveal">
+        <span class="feat-icon">🆓</span>
+        <div class="feat-title th-only">eTag ดาวน์โหลดฟรี</div>
+        <div class="feat-title en-only">Free to download</div>
+        <div class="feat-desc th-only">ดาวน์โหลด PDF ฟรี พิมพ์เอง ติดบนแผงหน้าปัด ไม่มีค่าใช้จ่ายใดทั้งสิ้น</div>
+        <div class="feat-desc en-only">Download, print and place — entirely free. No credit card, no subscription, no cost at all.</div>
+      </div>
+      <div class="feat-card reveal">
+        <span class="feat-icon">🏢</span>
+        <div class="feat-title th-only">B2B สำหรับคอนโด</div>
+        <div class="feat-title en-only">Built for condos too</div>
+        <div class="feat-desc th-only">ระบบจัดการลานจอดรถสำหรับนิติบุคคลคอนโด สำนักงาน และโรงพยาบาล</div>
+        <div class="feat-desc en-only">A complete parking management system for condo juristic offices, corporate buildings, and hospitals.</div>
+      </div>
+      <div class="feat-card reveal">
+        <span class="feat-icon">🌏</span>
+        <div class="feat-title th-only">เริ่มที่กรุงเทพฯ</div>
+        <div class="feat-title en-only">Beginning in Bangkok</div>
+        <div class="feat-desc th-only">เปิดตัวที่กรุงเทพฯ ก่อน แผนขยายสู่ SE Asia ในอนาคตอันใกล้</div>
+        <div class="feat-desc en-only">Launching in Bangkok first, with a clear path to expand across Southeast Asia in the near future.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ETAG CTA -->
+<section class="section" id="etag">
+  <div class="wrap">
+    <div class="cta-wrap reveal">
+      <div>
+        <div class="cta-eyebrow th-only">ดาวน์โหลดฟรี</div>
+        <div class="cta-eyebrow en-only">Free Download</div>
+
+        <h2 class="cta-h2-th th-only">รับ eTag ฟรี<br>และติดรถได้เลยวันนี้</h2>
+        <h2 class="cta-h2-en en-only">Receive your free eTag<br>and place it today</h2>
+
+        <p class="cta-sub th-only">กรอกอีเมลเพื่อรับลิงก์ดาวน์โหลด PDF eTag ทันที พิมพ์ ใส่ซองพลาสติก ติดบนแผงหน้าปัด ง่ายมาก</p>
+        <p class="cta-sub en-only">Enter your email and receive an instant PDF download link. Print it, slip it in a clear sleeve, place it on your dashboard.</p>
+
+        <div class="cta-form">
+          <input type="email" class="cta-input" id="email-input" placeholder="อีเมล / your@email.com">
+          <button class="btn-primary" onclick="submitEmail()">
+            <span class="th-inline">รับ eTag ฟรี</span>
+            <span class="en-inline">Send me the eTag</span>
+          </button>
+        </div>
+        <div id="form-msg-th" style="font-size:12px;color:#5ECB82;margin-top:14px;display:none;font-family:var(--jost);letter-spacing:.04em">ส่งแล้ว — กรุณาตรวจสอบอีเมลของคุณ 📩</div>
+        <div id="form-msg-en" style="font-size:12px;color:#5ECB82;margin-top:14px;display:none;font-family:var(--jost);letter-spacing:.04em">Sent — please check your inbox 📩</div>
+
+        <div class="or-div">
+          <span class="th-inline">หรือ</span>
+          <span class="en-inline">or</span>
+        </div>
+        <a href="https://line.me/R/ti/p/@171zfzov" class="cta-line-pill" target="_blank" rel="noopener">
+          <span class="th-inline">เพิ่ม LINE OA เพื่อรับ eTag</span>
+          <span class="en-inline">Add LINE OA to receive eTag</span>
+        </a>
+      </div>
+
+      <div class="cta-qr">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <rect width="100" height="100" fill="white"/>
+          <rect x="5" y="5" width="35" height="35" rx="2" fill="#091C1C"/>
+          <rect x="9" y="9" width="27" height="27" rx="1" fill="white"/>
+          <rect x="13" y="13" width="19" height="19" rx="1" fill="#091C1C"/>
+          <rect x="60" y="5" width="35" height="35" rx="2" fill="#091C1C"/>
+          <rect x="64" y="9" width="27" height="27" rx="1" fill="white"/>
+          <rect x="68" y="13" width="19" height="19" rx="1" fill="#091C1C"/>
+          <rect x="5" y="60" width="35" height="35" rx="2" fill="#091C1C"/>
+          <rect x="9" y="64" width="27" height="27" rx="1" fill="white"/>
+          <rect x="13" y="68" width="19" height="19" rx="1" fill="#091C1C"/>
+          <rect x="48" y="48" width="5" height="5" fill="#091C1C"/>
+          <rect x="55" y="48" width="5" height="5" fill="#091C1C"/>
+          <rect x="62" y="48" width="5" height="5" fill="#091C1C"/>
+          <rect x="69" y="48" width="5" height="5" fill="#091C1C"/>
+          <rect x="76" y="48" width="5" height="5" fill="#091C1C"/>
+          <rect x="83" y="48" width="5" height="5" fill="#091C1C"/>
+          <rect x="90" y="48" width="5" height="5" fill="#091C1C"/>
+          <rect x="48" y="55" width="5" height="5" fill="#091C1C"/>
+          <rect x="62" y="55" width="5" height="5" fill="#091C1C"/>
+          <rect x="76" y="55" width="5" height="5" fill="#091C1C"/>
+          <rect x="90" y="55" width="5" height="5" fill="#091C1C"/>
+          <rect x="48" y="62" width="5" height="5" fill="#091C1C"/>
+          <rect x="55" y="62" width="5" height="5" fill="#091C1C"/>
+          <rect x="69" y="62" width="5" height="5" fill="#091C1C"/>
+          <rect x="83" y="62" width="5" height="5" fill="#091C1C"/>
+          <rect x="48" y="69" width="5" height="5" fill="#091C1C"/>
+          <rect x="62" y="69" width="5" height="5" fill="#091C1C"/>
+          <rect x="76" y="69" width="5" height="5" fill="#091C1C"/>
+          <rect x="48" y="76" width="5" height="5" fill="#091C1C"/>
+          <rect x="55" y="76" width="5" height="5" fill="#091C1C"/>
+          <rect x="69" y="76" width="5" height="5" fill="#091C1C"/>
+          <rect x="83" y="76" width="5" height="5" fill="#091C1C"/>
+          <rect x="90" y="76" width="5" height="5" fill="#091C1C"/>
+          <rect x="48" y="83" width="5" height="5" fill="#091C1C"/>
+          <rect x="62" y="83" width="5" height="5" fill="#091C1C"/>
+          <rect x="76" y="83" width="5" height="5" fill="#091C1C"/>
+          <rect x="48" y="90" width="5" height="5" fill="#091C1C"/>
+          <rect x="55" y="90" width="5" height="5" fill="#091C1C"/>
+          <rect x="69" y="90" width="5" height="5" fill="#091C1C"/>
+          <rect x="90" y="90" width="5" height="5" fill="#091C1C"/>
+          <text x="50" y="99" font-family="monospace" font-size="4.2" fill="#999" text-anchor="middle">goparkping.com</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="footer-inner">
+      <div class="footer-copy">
+        <span class="th-inline">&copy; 2026 GoParkPing — กรุงเทพฯ, ประเทศไทย</span>
+        <span class="en-inline">&copy; 2026 GoParkPing — Bangkok, Thailand</span>
+      </div>
+      <div class="footer-links">
+        <a href="mailto:goparkping@gmail.com">
+          <span class="th-inline">ติดต่อ</span>
+          <span class="en-inline">Contact</span>
+        </a>
+        <a href="#etag">
+          <span class="th-inline">รับ eTag</span>
+          <span class="en-inline">Get eTag</span>
+        </a>
+        <a href="https://line.me/R/ti/p/@171zfzov" target="_blank" rel="noopener">LINE OA</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+function setLang(lang) {
+  document.documentElement.setAttribute('data-lang', lang);
+  document.documentElement.setAttribute('lang', lang);
+  document.getElementById('btn-th').classList.toggle('active', lang === 'th');
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+  try { localStorage.setItem('pp-lang', lang); } catch(e) {}
+}
+(function() {
+  try { var s = localStorage.getItem('pp-lang'); if (s) setLang(s); } catch(e) {}
+})();
+
+function submitEmail() {
+  var email = document.getElementById('email-input').value.trim();
+  var lang = document.documentElement.getAttribute('data-lang') || 'th';
+  if (!email || email.indexOf('@') < 0) {
+    document.getElementById('email-input').style.borderColor = '#8B4040';
+    return;
+  }
+  document.getElementById('email-input').style.borderColor = 'var(--gold)';
+  document.getElementById('form-msg-' + lang).style.display = 'block';
+  var btn = document.querySelector('.cta-form button');
+  btn.disabled = true; btn.style.opacity = '0.55';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var els = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window) {
+    var obs = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+      });
+    }, { threshold: 0.06 });
+    els.forEach(function(el) { obs.observe(el); });
+  } else {
+    els.forEach(function(el) { el.classList.add('visible'); });
+  }
+});
+</script>
+</body>
+</html>
